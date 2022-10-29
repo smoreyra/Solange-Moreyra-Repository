@@ -74,6 +74,7 @@ Dichas conclusiones pueden resumirse en el siguiente DataFrame.
 Como conclusión adicional se graficaron los primeros 10 artistas con mayor cantidad de canciones en el data set:
 
 ![top_10](top_10.png)
+
 Adicionalmente se graficaron los primeros 30 artistas con mayor popularidad promedio:
 
 ![30_popular](30_popular.png)
