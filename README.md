@@ -13,6 +13,7 @@ duration_ms: duración de la canción en milisegundos.
 - energy: toma valores entre 0,0 y 1,0 y representa una medida de la intensidad y actividad. Por lo general las pistas enérgicas se sienten ráìdas, fuertes y ruidosas. Por ejemplo, el death metal tiene mucha energía (valor cercano a 1,0), mientras que un Bach prelude presenta baja energía (valor cercano a 0,0). Las características de esta variable son el rango dinámico, el volumen percibido, el timbre, la tasa de inicio y la entropía en general.  
 - intrumentalness: toma valores entre 0,0 y 1,0  en función de si la canción contiene voces o no. Los  sonidos como “Ooh” y “aah” se tratan como instrumentales en este contexto. Las canciones de rap o palabras habladas son vocales. Cuando más instrumental sea más cerca estará el valor de 1,0 y mayor probabilidad habrá de que la canción no tenga contenido vocal.   
 key: Es el tono en el que se encuenta la canción. Las keys posibles existentes son las que se presentan en la siguiente imagen y están ligadas a las notas musicales.
+
 ![Keys](Keys.png)
 - liveness: toma valores entre 1,0 y 0,0 en función de la presencia de audiencia en la grabación. Los valores con liveness más altos tienen mayor probabilidad de que la canción se haya interpretado en vivo.  
 - loudness: El volumen de una canción se mide en decibelios (dB). Los valores típicos oscilan entre -60dB y 0dB.
@@ -68,5 +69,11 @@ Inicialmente se notó que el data set estaba compuesto por cantidades iguales de
 - El de mayor valence promedio es el género Blues y el de menor valence promedio es el género Classical. El que alcanza el mayor valor de valence es Electronic; y el valor minimo de valence esta alcanzado por los géneros Classical y Anime.
 Dichas conclusiones pueden resumirse en el siguiente DataFrame.
 
+![DF_resultados](DF_resultados.png)
+## Conclusiones adicionales
+Como conclusión adicional se graficaron los primeros 10 artistas con mayor cantidad de canciones en el data set:
 
+![top_10](top_10.png)
+Adicionalmente se graficaron los primeros 30 artistas con mayor popularidad promedio:
 
+![30_popular](30_popular.png)
