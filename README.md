@@ -71,7 +71,7 @@ Dichas conclusiones pueden resumirse en el siguiente DataFrame.
 
 ![DF_resultados](DF_resultados.png)
 
-Posterior a este análisis se puede utilizar el data set para diferentes objetivos, por ejemplo predecir el género a partir de la información de diferentes variables. Las conclusiones obtenidas nos permiten validar los resultados que se puedan llegar a obtener. 
+Posterior a este análisis se puede utilizar el data set para diferentes objetivos, por ejemplo predecir el género a partir de la información de diferentes variables. Las conclusiones realizadas en este análisis nos permiten validar los resultados que se puedan llegar a obtener. 
 
 ## Conclusiones adicionales
 Como conclusión adicional se graficaron los primeros 10 artistas con mayor cantidad de canciones en el data set:
