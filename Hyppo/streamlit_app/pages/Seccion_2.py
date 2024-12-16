@@ -6,7 +6,7 @@ from urllib.error import URLError
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Sección 1", 
+    page_title="Sección 12", 
     page_icon="❤️",
     layout="wide"
     )
@@ -84,33 +84,30 @@ st.markdown(
 )
 
 # Descripción
-st.markdown("# Sección 1")
+st.markdown("# Sección 2")
 st.write(
-    """El negocio y el ciclo de vida del cliente."""
+    """Estrategia de marketing."""
 )
 
 @st.cache_data
 def load_data():
     try:
         # Cargar datasets desde archivos Excel
-        # Transacciones del período 2023 y 2024 hasta octubre
-        df_bd_orders = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/bd_orders.xlsx', engine='openpyxl')
+        # Campañas de envíos automatizados de comunicaciones que tuvo prendida 
+        # el cliente durante Q3 2024 con un detalle de los envíos realizados
+        df_BD_campaigns_Q3 = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/bd_campaigns_q3.xlsx', engine='openpyxl')
 
-        # Base de datos de descargas de la app desde Diciembre 2022 en adelante
-        df_BD_signups = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/BD_signups.xlsx', engine='openpyxl')
-
-        return df_bd_orders, df_BD_signups
+        return df_BD_campaigns_Q3
     
     except FileNotFoundError as e:
         st.error(f"No se encontró el archivo: {e.filename}")
         return pd.DataFrame()
 
 try:
-    df_bd_orders, df_BD_signups = load_data()
+    df_BD_campaigns_Q3 = load_data()
     
-    # st.title("Visualización del dataframe")
-    # st.dataframe(df_bd_orders)
-    # st.dataframe(df_BD_signups)
+    st.title("Visualización del dataframe")
+    st.dataframe(df_BD_campaigns_Q3)
 
     first_year = df_bd_orders["order_date_formatted"].min()
     last_year = df_bd_orders["order_date_formatted"].max()
