@@ -107,10 +107,6 @@ def load_data():
 
 try:
     df_bd_orders, df_BD_signups = load_data()
-    
-    # st.title("Visualización del dataframe")
-    # st.dataframe(df_bd_orders)
-    # st.dataframe(df_BD_signups)
 
     first_year = df_bd_orders["order_date_formatted"].min()
     last_year = df_bd_orders["order_date_formatted"].max()
@@ -134,28 +130,8 @@ try:
 
 
         st.markdown('<h1 style="font-size: 30px; font-weight: bold; text-align:left;">Filtros</h1>', unsafe_allow_html=True)
-        
-        # Sesión para mantener el estado de las fechas seleccionadas
-        if 'selected_dates' not in st.session_state:
-            st.session_state['selected_dates'] = [first_year, last_year]
-            
-        def reset_dates():
-            st.session_state['selected_dates'] = [first_year, last_year]
-        
-        start_date, end_date = st.date_input(
-            "Order date", 
-            value=st.session_state['selected_dates'],
-            min_value=first_year,
-            max_value=last_year,
-        )
 
-        # Botón para resetear las fechas
-        if st.button("Resetear Fechas"):
-            reset_dates()  # Esto restablecerá las fechas a la inicial
-            
-        # Actualizar la selección de fechas en el estado
-        st.session_state['selected_dates'] = [start_date, end_date]
-        
+        start_date, end_date = st.date_input("Order date", [first_year,last_year])
         selected_channel = create_multiselect_filter(df_bd_orders, "channel", "Channel")
         selected_category = create_multiselect_filter(df_bd_orders, "categoria", "Categoria")
         selected_tipo_orden = create_multiselect_filter(df_bd_orders, "tipo_orden", "Tipo orden")   
@@ -214,14 +190,6 @@ try:
                         .encode(
                             x=alt.X("order_date_formatted:T", title="Order date"),
                             y=alt.Y("Valor:Q"),
-                            color=alt.Color('Variable:N', title='Variable', legend=alt.Legend(
-                                                                    orient='bottom',
-                                                                    title=None,
-                                                                    direction='horizontal',
-                                                                    legendX=0,
-                                                                    legendY=0
-                                                                )
-                                                            ),
                             tooltip=[
                                 alt.Tooltip("order_date_formatted:T", title='Order date'),
                                 alt.Tooltip("Valor:Q", format=',.2f'),
@@ -240,10 +208,6 @@ try:
                 aov = ingresos_totales / ordenes_totales
                 tasa_cumplimiento_sku = (filtered_data_orders['skus_entregados'].sum() / filtered_data_orders['skus_pedidos'].sum()) * 100
                 tasa_cumplimiento_item = (filtered_data_orders['items_entregados'].sum() / filtered_data_orders['items_pedidos'].sum()) * 100
-
-                # Streamlit UI
-                # st.title("Tablero de Métricas del Negocio")
-                # st.markdown("Visualización de las métricas clave para analizar la performance general y a nivel cliente.")
 
                 # Contenedor: Métricas generales
                 with st.container():
@@ -341,7 +305,6 @@ try:
                         ), use_container_width=True)
 
                 # Métricas por cliente
-                
                 # Filtrar los customer_id en filtered_data_orders que están en df_BD_signups
                 filtered_data_orders_registered  = filtered_data_orders[filtered_data_orders['customer_id'].isin(df_BD_signups['customer_id'])]
                 
@@ -358,84 +321,19 @@ try:
                 # Contenedor: Métricas por cliente
                 with st.container():
                     st.header("Performance a nivel cliente")
-                    col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
+                    col1, col2, col3 = st.columns([1.2, 1, 1])
                     col1.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%", 
                                 help="(Número de clientes únicos con ordenes / Número de registros únicos) * 100.")
                     col2.metric("Lifetime Value Promedio", f"${ltv_por_cliente:,.2f}", 
                                 help="Promedio del valor total por cliente.")
-                    col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
-                            help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
-                    col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
-                            help="100 - Tasa de Retención.")
-
-                # # Crear tabs para cada métrica
-                # tasa_de_conversión, lifetime_value_promedio, tasa_de_retencion, tasa_de_churn = st.tabs([
-                #     "Tasa de Conversión", 
-                #     "Lifetime Value Promedio ", 
-                #     "Tasa de Retención",
-                #     "Tasa  por SKU"
-                #     ])
+                    col3.metric("Frecuencia de compra Promedio", f"${ltv_por_cliente:,.2f}", 
+                                help="Promedio de la frencuencia de compra por cliente en un periodo dado.")                    
                     
-                # # Grafico cada métrica a lo largo del tiempo
-                # agg_data_metrics = (
-                #     filtered_data_orders.groupby("order_date_formatted", as_index=False)
-                #     .agg({
-                #         "total_value": "sum",  # Ingresos totales
-                #         "order_id": "nunique",  # Órdenes totales
-                #         "skus_entregados": "sum",
-                #         "skus_pedidos": "sum",
-                #         "items_pedidos": "sum",
-                #         "items_entregados": "sum"
-                #     })
-                # )
-
-                # # Renombrar columnas para mayor claridad
-                # agg_data_metrics.rename(columns={
-                #     "total_value": "ingresos_totales", 
-                #     "order_id": "ordenes_totales"}, 
-                # inplace=True)
-
-                # # Calcular AOV (Average Order Value) como ingresos totales / órdenes totales
-                # agg_data_metrics["AOV"] = agg_data_metrics["ingresos_totales"] / agg_data_metrics["ordenes_totales"]
-           
-                # # Calcular la tasa de cumplimiento por SKU 
-                # agg_data_metrics["Tasa_sku"] = (agg_data_metrics['skus_entregados'] / agg_data_metrics['skus_pedidos']) * 100
-                
-                # # Calcular la tasa de cumplimiento por Item 
-                # agg_data_metrics["Tasa_item"] = (agg_data_metrics['items_entregados'] / agg_data_metrics['items_pedidos']) * 100
-           
-                # # Graficar en cada tab
-                # with tasa_de_conversión:
-                #     st.altair_chart(crear_grafico_metrica(
-                #         agg_data_metrics, 
-                #         "ingresos_totales", 
-                #         "Ingresos Totales",
-                #         "#60B7AC"
-                #         ), use_container_width=True)
-
-                # with lifetime_value_promedio:
-                #     st.altair_chart(crear_grafico_metrica(
-                #         agg_data_metrics, 
-                #         "AOV", 
-                #         "Average Order Value",
-                #         "#8A2BE2"
-                #         ), use_container_width=True)
-
-                # with tasa_de_retencion:
-                #     st.altair_chart(crear_grafico_metrica(
-                #         agg_data_metrics, 
-                #         "Tasa_sku", 
-                #         "Tasa de Cumplimiento por SKU",
-                #         "#8A2BE2"
-                #         ), use_container_width=True)
-
-                # with tasa_de_churn:
-                #     st.altair_chart(crear_grafico_metrica(
-                #         agg_data_metrics, 
-                #         "ordenes_totales", 
-                #         "Órdenes Totales",
-                #         "pink"
-                #         ), use_container_width=True)
+                    col1, col2, col3 = st.columns([1.2, 1, 1])
+                    col1.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
+                            help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
+                    col2.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
+                            help="100 - Tasa de Retención.")
  
                 # Hago a la agregación por valor para armar el gráfico
                 agg_data = (
@@ -481,7 +379,7 @@ try:
                 )
 
                 # Visualización del gráfico
-                st.altair_chart(chart, use_container_width=True)
+                # st.altair_chart(chart, use_container_width=True)
     
     # TODO: Todo sigue afectado por los filtros de costado. 
     st.header("Ciclo de Vida de los clientes")
@@ -532,25 +430,6 @@ try:
     # Calcular estadísticas generales
     average_time_to_first_purchase = time_to_first_purchase[time_to_first_purchase['time_to_first_purchase']>=0]["time_to_first_purchase"].mean()
 
-    # Métricas de retención
-    clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
-    tasa_retencion = (clientes_retenidos / filtered_data_orders['customer_id'].nunique()) * 100
-    tasa_churn = 100 - tasa_retencion
-        
-    # Contenedor: Métricas por cliente
-    with st.container():
-        col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
-        col1.metric("Tasa de Activación", f"{tasa_activacion:.2f}%", 
-                    help="(Número de clientes que realizó un pedido / Número de registros únicos) * 100.")
-        col1.write(f"N° Clientes Registrados Sin Pedido: {numero_registrados_sin_pedido}")
-        col1.write(f"De un total de: {total_registrados}")
-        col2.metric("Time to First Purchase (días)", f"{average_time_to_first_purchase:,.2f}", 
-                    help="Promedio de la diferencia entre la fecha de registro y fecha de la primera compra")
-        col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
-                help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
-        col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
-                help="100 - Tasa de Retención.")
-    
     # Histograma de tiempo hasta la priemra compra. 
     # Filtrar valores válidos para TTFP
     valid_time_to_first_purchase = df_complete['time_to_first_purchase'].dropna()
@@ -569,17 +448,52 @@ try:
         )
         .properties(
             width=600,
-            height=400,
+            height=280,
             title='Distribución del Tiempo Hasta la Primera Compra'
         )
     )
+        
+    # Contenedor: Métricas por cliente
+    with st.container():
+        col1, col2, col3 = st.columns([0.5, 0.5, 2])
+        col1.metric("Tasa de Activación", f"{tasa_activacion:.2f}%", 
+                    help="(Número de clientes que realizó un pedido / Número de registros únicos) * 100.")
+        col1.write(f"N° Clientes Registrados Sin Pedido: {numero_registrados_sin_pedido}")
+        col1.write(f"De un total de: {total_registrados}")
+        col2.metric("Time to First Purchase", f"{average_time_to_first_purchase:,.2f} días", 
+                    help="Promedio de la diferencia entre la fecha de registro y fecha de la primera compra")
+        col3.altair_chart(histogram, use_container_width=True)  # Mostrar el gráfico en Streamlit
 
-    # Mostrar el gráfico en Streamlit
-    st.altair_chart(histogram, use_container_width=True)
+    # Clientes en ciclo temprano de los que estan registrados
+    # Filtrar clientes en ciclo de vida temprano (<= 90 días o <= 3 compras)
+    clientes_ciclo_temprano_ordenes = filtered_data_orders_registered.groupby('customer_id').filter(lambda x: len(x) <= 3)
+    num_clientes_ciclo_temprano_ordenes = clientes_ciclo_temprano_ordenes['customer_id'].nunique()
+    
+    clientes_ciclo_temprano_dias = filtered_data_orders_registered.groupby('customer_id').filter(lambda x: (x['order_date_formatted'].max() - x['order_date_formatted'].min()).days <= 90)
+    num_clientes_ciclo_temprano_dias = clientes_ciclo_temprano_dias['customer_id'].nunique()
+     
     
     st.markdown("#### Ciclo de vida temprano")
+    
+    with st.container():
+        col1, col2 = st.columns([1, 1])
+        col1.markdown("Hasta las primeras 3 órdenes.")
+        col1.metric("N° Clientes en ciclo temprano", f"{num_clientes_ciclo_temprano_ordenes}")
+        col1.write(f"N° Clientes registrados con al menos 1 pedido: {total_registrados-numero_registrados_sin_pedido}")
+        col2.markdown("Primeros 30-90 días desde la primera compra.")
+        col2.metric("N° Clientes en ciclo temprano", f"{num_clientes_ciclo_temprano_dias}")
+    
+    # Métricas de retención
+    clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
+    tasa_retencion = (clientes_retenidos / filtered_data_orders['customer_id'].nunique()) * 100
+    tasa_churn = 100 - tasa_retencion
+    
     st.markdown("#### Madurez del cliente")
     
+        #     col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
+        #         help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
+        # col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
+        #         help="100 - Tasa de Retención.")
 
 except URLError as e:
     st.error(
@@ -596,4 +510,5 @@ except URLError as e:
     # Cantidad de SKUs pedidos en promedio
     # Revisar por qu da mas del 100% la tasa de conversion, LISTO (me estab dando mayor al 100% porque habia clientes
     # que no estaban registrados, porque capaz se registraron antes, pero que si hicieron una compra en ese periodo)
-    # Frecuencia de compra
+    # Frecuencia de compra (agregar histograma)
+    # Agregar tab de KPI y visualizaciones
