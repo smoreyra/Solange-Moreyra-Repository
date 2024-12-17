@@ -450,7 +450,6 @@ try:
                 # Visualización del gráfico
                 # st.altair_chart(chart, use_container_width=True)
     
-    # TODO: Todo sigue afectado por los filtros de costado. 
     st.header("Ciclo de Vida de los clientes")
     st.markdown("#### Activación (antes de primera compra)")
     
@@ -565,16 +564,3 @@ except URLError as e:
     st.error(
         f"**This demo requires internet access.**\nConnection error: {e.reason}"
     )
-    
-    # TODO: métricas a agregar
-    # Gráfico que compare los items pedidos con los items entregados y filtrar por channel, por categoria y por tipo de orden. 
-    # También filtrar por fecha para ver los KPI de totales. 
-    # Ver que pongo de las tabs para ver si agrego por Market, por Eats o todo junto y demás. 
-    # Hacer un select box o diferentes tabs donde se peude elegir que tipo de métrica se quiere evaluar a lo largo del tiempo. 
-    # Agregar una opción en el drodown que sea All, LISTO
-    # Cuáles SKUs tienen mayor tasa de cumplimiento que otros, LISTO 
-    # Cantidad de SKUs pedidos en promedio
-    # Revisar por qu da mas del 100% la tasa de conversion, LISTO (me estab dando mayor al 100% porque habia clientes
-    # que no estaban registrados, porque capaz se registraron antes, pero que si hicieron una compra en ese periodo)
-    # Frecuencia de compra (agregar histograma)
-    # Agregar tab de KPI y visualizaciones
