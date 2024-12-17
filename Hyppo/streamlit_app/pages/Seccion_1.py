@@ -216,6 +216,64 @@ try:
                             help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
                     col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
                             help="100 - Tasa de Retención.")
+                    
+                # Grafico cada métrica a lo largo del tiempo
+                agg_data_metrics = (
+                    filtered_data_orders.groupby("order_date_formatted", as_index=False)
+                    .agg({
+                        "total_value": "sum",  # Ingresos totales
+                        "order_id": "nunique"  # Órdenes totales
+                    })
+                )
+
+                # Renombrar columnas para mayor claridad
+                agg_data_metrics.rename(columns={
+                    "total_value": "ingresos_totales", 
+                    "order_id": "ordenes_totales"}, 
+                inplace=True)
+
+                # Calcular AOV (Average Order Value) como ingresos totales / órdenes totales
+                agg_data_metrics["AOV"] = agg_data_metrics["ingresos_totales"] / agg_data_metrics["ordenes_totales"]
+           
+                # Crear un dataframe largo para poder graficar las tres métricas
+                agg_data_long = agg_data_metrics.melt(id_vars=['order_date_formatted'], 
+                              value_vars=['ingresos_totales', 'ordenes_totales', 'AOV'], 
+                              var_name='Variable', 
+                              value_name='Valor')
+           
+                selection = alt.selection_multi(fields=['Variable'], bind='legend')
+
+                agg_data_long['Variable'] = agg_data_long['Variable'].replace({
+                    'ingresos_totales': 'Ingresos totales',  
+                    'ordenes_totales': 'Órdenes totales',
+                    'AOV': 'Average Order Value',
+                })
+
+                chart_metrics = (
+                    alt.Chart(agg_data_long)
+                    .mark_line()
+                    .encode(
+                        x=alt.X("order_date_formatted:T", title="Order date"),
+                        y=alt.Y("Valor:Q"),
+                        color=alt.Color('Variable:N', title='Variable', legend=alt.Legend(
+                                                orient='bottom',
+                                                title=None,
+                                                direction='horizontal',
+                                                legendX=0,
+                                                legendY=0
+                                            )
+                                        ),
+                        tooltip=[
+                            alt.Tooltip("order_date_formatted:T", title='Order date'),
+                            alt.Tooltip("Valor:Q", format=',.2f'),
+                            "Variable:N"],
+                        opacity=alt.condition(selection, alt.value(1), alt.value(0)) 
+                    )
+                    .add_selection(selection)
+                )
+
+                # Visualización del gráfico
+                st.altair_chart(chart_metrics, use_container_width=True)
            
                 # Hago a la agregación por valor para armar el gráfico
                 agg_data = (
@@ -225,12 +283,12 @@ try:
             
                 melted_df = pd.melt(agg_data, id_vars=["order_date_formatted"], 
                                 value_vars=["skus_pedidos", "skus_entregados", "items_pedidos", "items_entregados"], 
-                                var_name="variable", value_name="value"
+                                var_name="Variable", value_name="Valor"
                 )
                 
-                selection = alt.selection_multi(fields=['variable'], bind='legend')
+                selection = alt.selection_multi(fields=['Variable'], bind='legend')
 
-                melted_df['variable'] = melted_df['variable'].replace({
+                melted_df['Variable'] = melted_df['Variable'].replace({
                     'skus_pedidos': 'SKUs Pedidos',  
                     'skus_entregados': 'SKUs Entregados',
                     'items_pedidos': 'Items Pedidos',
@@ -242,8 +300,8 @@ try:
                     .mark_line()
                     .encode(
                         x=alt.X("order_date_formatted:T", title="Order date"),
-                        y=alt.Y("value:Q"),
-                        color=alt.Color('variable:N', title='Variable', legend=alt.Legend(
+                        y=alt.Y("Valor:Q"),
+                        color=alt.Color('Variable:N', title='Variable', legend=alt.Legend(
                                                 orient='bottom',
                                                 title=None,
                                                 direction='horizontal',
@@ -251,7 +309,10 @@ try:
                                                 legendY=0
                                             )
                                         ),
-                        tooltip=["order_date_formatted:T", "value:Q", "variable:N"],
+                        tooltip=[
+                            alt.Tooltip("order_date_formatted:T", title='Order date'),
+                            alt.Tooltip("Valor:Q", format=',.2f'),
+                            "Variable:N"],
                         opacity=alt.condition(selection, alt.value(1), alt.value(0)) 
                     )
                     .add_selection(selection)
