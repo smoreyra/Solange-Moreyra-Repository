@@ -222,19 +222,6 @@ try:
                 tasa_cumplimiento_sku = (filtered_data_orders['skus_entregados'].sum() / filtered_data_orders['skus_pedidos'].sum()) * 100
                 tasa_cumplimiento_item = (filtered_data_orders['items_entregados'].sum() / filtered_data_orders['items_pedidos'].sum()) * 100
 
-                # Métricas por cliente
-                
-                # Filtrar los customer_id en filtered_data_orders que no están en df_BD_signups
-                unregistered_customers = filtered_data_orders[~filtered_data_orders['customer_id'].isin(df_BD_signups['customer_id'])]
-                # Tendría que pone acá de los customer_id que se encuentran en el filtro cuáles de los totales que se registraron ahi (para que no me de mayor al 100%)
-                tasa_conversion = (unregistered_customers['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
-                ltv_por_cliente = filtered_data_orders.groupby('customer_id')['total_value'].sum().mean()
-
-                # Métricas de retención
-                clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
-                tasa_retencion = (clientes_retenidos / filtered_data_orders['customer_id'].nunique()) * 100
-                tasa_churn = 100 - tasa_retencion
-
                 # Streamlit UI
                 # st.title("Tablero de Métricas del Negocio")
                 # st.markdown("Visualización de las métricas clave para analizar la performance general y a nivel cliente.")
@@ -260,7 +247,7 @@ try:
                 ingresos_totales, ordenes_totales, aov, tasa_sku, tasa_item = st.tabs([
                     "Ingresos Totales", 
                     "Órdenes Totales", 
-                    "AOV(Average Order Value)",
+                    "AOV (Average Order Value)",
                     "Tasa de Cuplimiento por SKU",
                     "Tasa de Cumplimiento pot Item"
                     ])
@@ -333,7 +320,22 @@ try:
                         "Tasa de Cumplimiento por Item",
                         "#8A2BE2"
                         ), use_container_width=True)
-                       
+
+                # Métricas por cliente
+                
+                # Filtrar los customer_id en filtered_data_orders que están en df_BD_signups
+                filtered_data_orders_registered  = filtered_data_orders[filtered_data_orders['customer_id'].isin(df_BD_signups['customer_id'])]
+                
+                # Tendría que pone acá de los customer_id que se encuentran en el filtro cuáles de los totales 
+                # que se registraron ahi (para que no me de mayor al 100%)
+                tasa_conversion = (filtered_data_orders_registered ['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
+                ltv_por_cliente = filtered_data_orders.groupby('customer_id')['total_value'].sum().mean()
+
+                # Métricas de retención
+                clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
+                tasa_retencion = (clientes_retenidos / filtered_data_orders['customer_id'].nunique()) * 100
+                tasa_churn = 100 - tasa_retencion
+                    
                 # Contenedor: Métricas por cliente
                 with st.container():
                     st.header("Performance a nivel cliente")
@@ -346,7 +348,75 @@ try:
                             help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
                     col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
                             help="100 - Tasa de Retención.")
+
+                # # Crear tabs para cada métrica
+                # tasa_de_conversión, lifetime_value_promedio, tasa_de_retencion, tasa_de_churn = st.tabs([
+                #     "Tasa de Conversión", 
+                #     "Lifetime Value Promedio ", 
+                #     "Tasa de Retención",
+                #     "Tasa  por SKU"
+                #     ])
+                    
+                # # Grafico cada métrica a lo largo del tiempo
+                # agg_data_metrics = (
+                #     filtered_data_orders.groupby("order_date_formatted", as_index=False)
+                #     .agg({
+                #         "total_value": "sum",  # Ingresos totales
+                #         "order_id": "nunique",  # Órdenes totales
+                #         "skus_entregados": "sum",
+                #         "skus_pedidos": "sum",
+                #         "items_pedidos": "sum",
+                #         "items_entregados": "sum"
+                #     })
+                # )
+
+                # # Renombrar columnas para mayor claridad
+                # agg_data_metrics.rename(columns={
+                #     "total_value": "ingresos_totales", 
+                #     "order_id": "ordenes_totales"}, 
+                # inplace=True)
+
+                # # Calcular AOV (Average Order Value) como ingresos totales / órdenes totales
+                # agg_data_metrics["AOV"] = agg_data_metrics["ingresos_totales"] / agg_data_metrics["ordenes_totales"]
+           
+                # # Calcular la tasa de cumplimiento por SKU 
+                # agg_data_metrics["Tasa_sku"] = (agg_data_metrics['skus_entregados'] / agg_data_metrics['skus_pedidos']) * 100
                 
+                # # Calcular la tasa de cumplimiento por Item 
+                # agg_data_metrics["Tasa_item"] = (agg_data_metrics['items_entregados'] / agg_data_metrics['items_pedidos']) * 100
+           
+                # # Graficar en cada tab
+                # with tasa_de_conversión:
+                #     st.altair_chart(crear_grafico_metrica(
+                #         agg_data_metrics, 
+                #         "ingresos_totales", 
+                #         "Ingresos Totales",
+                #         "#60B7AC"
+                #         ), use_container_width=True)
+
+                # with lifetime_value_promedio:
+                #     st.altair_chart(crear_grafico_metrica(
+                #         agg_data_metrics, 
+                #         "AOV", 
+                #         "Average Order Value",
+                #         "#8A2BE2"
+                #         ), use_container_width=True)
+
+                # with tasa_de_retencion:
+                #     st.altair_chart(crear_grafico_metrica(
+                #         agg_data_metrics, 
+                #         "Tasa_sku", 
+                #         "Tasa de Cumplimiento por SKU",
+                #         "#8A2BE2"
+                #         ), use_container_width=True)
+
+                # with tasa_de_churn:
+                #     st.altair_chart(crear_grafico_metrica(
+                #         agg_data_metrics, 
+                #         "ordenes_totales", 
+                #         "Órdenes Totales",
+                #         "pink"
+                #         ), use_container_width=True)
  
                 # Hago a la agregación por valor para armar el gráfico
                 agg_data = (
@@ -396,6 +466,30 @@ try:
     
     st.header("Ciclo de Vida de los clientes")
     st.markdown("#### Activación (antes de primera compra)")
+    
+    # Filtrar los customer_id en filtered_data_orders que no están en df_BD_signups
+    filtered_data_orders_registered  = filtered_data_orders[~filtered_data_orders['customer_id'].isin(df_BD_signups['customer_id'])]
+    # Tendría que pone acá de los customer_id que se encuentran en el filtro cuáles de los totales que se registraron ahi (para que no me de mayor al 100%)
+    tasa_conversion = (filtered_data_orders_registered ['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
+    ltv_por_cliente = filtered_data_orders.groupby('customer_id')['total_value'].sum().mean()
+
+    # Métricas de retención
+    clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
+    tasa_retencion = (clientes_retenidos / filtered_data_orders['customer_id'].nunique()) * 100
+    tasa_churn = 100 - tasa_retencion
+        
+    # Contenedor: Métricas por cliente
+    with st.container():
+        col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
+        col1.metric("Tasa de Activación", f"{tasa_conversion:.2f}%", 
+                    help="(Número de clientes únicos con ordenes / Número de registros únicos) * 100.")
+        col2.metric("Lifetime Value Promedio", f"${ltv_por_cliente:,.2f}", 
+                    help="Promedio del valor total por cliente.")
+        col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
+                help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
+        col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
+                help="100 - Tasa de Retención.")
+    
     st.markdown("#### Ciclo de vida temprano")
     st.markdown("#### Madurez del cliente")
     
