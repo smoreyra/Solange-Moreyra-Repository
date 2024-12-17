@@ -132,11 +132,30 @@ try:
             else:
                 return selected_values
 
-        # with st.container(height=450):
+
         st.markdown('<h1 style="font-size: 30px; font-weight: bold; text-align:left;">Filtros</h1>', unsafe_allow_html=True)
         
-        # st.markdown('<div class="filter-title">Geographic</div>', unsafe_allow_html=True)
-        start_date, end_date = st.date_input("Order date", [first_year, last_year])
+        # Sesión para mantener el estado de las fechas seleccionadas
+        if 'selected_dates' not in st.session_state:
+            st.session_state['selected_dates'] = [first_year, last_year]
+            
+        def reset_dates():
+            st.session_state['selected_dates'] = [first_year, last_year]
+        
+        start_date, end_date = st.date_input(
+            "Order date", 
+            value=st.session_state['selected_dates'],
+            min_value=first_year,
+            max_value=last_year,
+        )
+
+        # Botón para resetear las fechas
+        if st.button("Resetear Fechas"):
+            reset_dates()  # Esto restablecerá las fechas a la inicial
+            
+        # Actualizar la selección de fechas en el estado
+        st.session_state['selected_dates'] = [start_date, end_date]
+        
         selected_channel = create_multiselect_filter(df_bd_orders, "channel", "Channel")
         selected_category = create_multiselect_filter(df_bd_orders, "categoria", "Categoria")
         selected_tipo_orden = create_multiselect_filter(df_bd_orders, "tipo_orden", "Tipo orden")   
