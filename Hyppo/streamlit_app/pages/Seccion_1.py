@@ -312,6 +312,7 @@ try:
                 # que se registraron ahi (para que no me de mayor al 100%)
                 tasa_conversion = (filtered_data_orders_registered ['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
                 ltv_por_cliente = filtered_data_orders.groupby('customer_id')['total_value'].sum().mean()
+                frecuencia_compra_periodo = filtered_data_orders.groupby('customer_id')['order_id'].count().mean()
 
                 # Métricas de retención
                 clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
@@ -326,7 +327,7 @@ try:
                                 help="(Número de clientes únicos con ordenes / Número de registros únicos) * 100.")
                     col2.metric("Lifetime Value Promedio", f"${ltv_por_cliente:,.2f}", 
                                 help="Promedio del valor total por cliente.")
-                    col3.metric("Frecuencia de compra Promedio", f"${ltv_por_cliente:,.2f}", 
+                    col3.metric("Frecuencia de compra Promedio", f"{frecuencia_compra_periodo:,.0f}", 
                                 help="Promedio de la frencuencia de compra por cliente en un periodo dado.")                    
                     
                     col1, col2, col3 = st.columns([1.2, 1, 1])
@@ -335,6 +336,7 @@ try:
                     col2.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
                             help="100 - Tasa de Retención.")
  
+
                 # Hago a la agregación por valor para armar el gráfico
                 agg_data = (
                     filtered_data_orders.groupby("order_date_formatted", as_index=False)
@@ -464,6 +466,7 @@ try:
                     help="Promedio de la diferencia entre la fecha de registro y fecha de la primera compra")
         col3.altair_chart(histogram, use_container_width=True)  # Mostrar el gráfico en Streamlit
 
+
     # Clientes en ciclo temprano de los que estan registrados
     # Filtrar clientes en ciclo de vida temprano (<= 90 días o <= 3 compras)
     clientes_ciclo_temprano_ordenes = filtered_data_orders_registered.groupby('customer_id').filter(lambda x: len(x) <= 3)
@@ -471,7 +474,6 @@ try:
     
     clientes_ciclo_temprano_dias = filtered_data_orders_registered.groupby('customer_id').filter(lambda x: (x['order_date_formatted'].max() - x['order_date_formatted'].min()).days <= 90)
     num_clientes_ciclo_temprano_dias = clientes_ciclo_temprano_dias['customer_id'].nunique()
-     
     
     st.markdown("#### Ciclo de vida temprano")
     
