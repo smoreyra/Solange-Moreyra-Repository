@@ -464,14 +464,54 @@ try:
                 # Visualización del gráfico
                 st.altair_chart(chart, use_container_width=True)
     
+    # TODO: Todo sigue afectado por los filtros de costado. 
     st.header("Ciclo de Vida de los clientes")
     st.markdown("#### Activación (antes de primera compra)")
     
-    # Filtrar los customer_id en filtered_data_orders que no están en df_BD_signups
-    filtered_data_orders_registered  = filtered_data_orders[~filtered_data_orders['customer_id'].isin(df_BD_signups['customer_id'])]
-    # Tendría que pone acá de los customer_id que se encuentran en el filtro cuáles de los totales que se registraron ahi (para que no me de mayor al 100%)
-    tasa_conversion = (filtered_data_orders_registered ['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
-    ltv_por_cliente = filtered_data_orders.groupby('customer_id')['total_value'].sum().mean()
+    # Filtrar los customer_id en filtered_data_orders que están en df_BD_signups (necesito que al menos esten registrados)
+    # Con esto si por ejemplo los que hicieron pedidos son A, B, E y los que se encuentran registrados son A, B, C; 
+    # me va filtrar A, B; C sería un id que se registró pero que no hizo ninguna orden en ese periodo. 
+    filtered_data_orders_registered  = filtered_data_orders[filtered_data_orders['customer_id'].isin(df_BD_signups['customer_id'])]
+    
+    # Filtrar los customer_id registrados pero que no hicieron un pedido.
+    # Con el ejemplo anterior me quedaría solo C. 
+    registrados_sin_pedido = df_BD_signups[~df_BD_signups['customer_id'].isin(filtered_data_orders_registered['customer_id'])]
+    
+    # Número de clientes registrados que no hicieron pedido
+    numero_registrados_sin_pedido = registrados_sin_pedido['customer_id'].nunique()
+
+    # Total de clientes registrados
+    total_registrados = df_BD_signups['customer_id'].nunique()
+
+    # Es 1-Tasa Activación
+    # Proporción de clientes registrados que no realizaron pedidos
+    porcentaje_sin_pedido = (numero_registrados_sin_pedido / total_registrados) * 100
+    
+    # Acá tengo que pensar en los id que estan en registros pero que no estan en singups. 
+    # Tasa de conversión es lo mismo que tasa de activación. Lo podría pensar en un cierto periodo de tiempo. 
+    tasa_activacion = (filtered_data_orders_registered ['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
+    
+    # Tiempo hasta la priemra compra (TTFP). 
+    # Encontrar la primera compra de cada cliente (mínima fecha de compra) de los que estan registrados.
+    first_purchase_date = filtered_data_orders_registered.groupby('customer_id')['order_date_formatted'].min().reset_index()
+    first_purchase_date.rename(columns={'order_date_formatted': 'first_purchase_date'}, inplace=True)
+
+    # Unir el DataFrame original con la fecha de la primera compra
+    df_complete = pd.merge(df_BD_signups, first_purchase_date, on='customer_id', how='left')
+
+    # Calcular el tiempo hasta la primera compra (en días)
+    df_complete['time_to_first_purchase'] = (df_complete['first_purchase_date'] - df_complete['fecha_registro_formatted']).dt.days
+
+    # Obtener el tiempo hasta la primera compra para cada cliente 
+    # Porque algunos cliente spudieron no haber hechos pedidos entonces aca daría infinito
+    time_to_first_purchase = df_complete[['customer_id', 'time_to_first_purchase']].drop_duplicates()
+
+    # POR ALGÚN MOTIVO HAY FECHAS NEGATIVAS
+    # st.dataframe(time_to_first_purchase[time_to_first_purchase['time_to_first_purchase']<0])
+    
+    # Me quedo con los valores positivos para que no sesgue los resultados
+    # Calcular estadísticas generales
+    average_time_to_first_purchase = time_to_first_purchase[time_to_first_purchase['time_to_first_purchase']>=0]["time_to_first_purchase"].mean()
 
     # Métricas de retención
     clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
@@ -481,14 +521,42 @@ try:
     # Contenedor: Métricas por cliente
     with st.container():
         col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
-        col1.metric("Tasa de Activación", f"{tasa_conversion:.2f}%", 
-                    help="(Número de clientes únicos con ordenes / Número de registros únicos) * 100.")
-        col2.metric("Lifetime Value Promedio", f"${ltv_por_cliente:,.2f}", 
-                    help="Promedio del valor total por cliente.")
+        col1.metric("Tasa de Activación", f"{tasa_activacion:.2f}%", 
+                    help="(Número de clientes que realizó un pedido / Número de registros únicos) * 100.")
+        col1.write(f"N° Clientes Registrados Sin Pedido: {numero_registrados_sin_pedido}")
+        col1.write(f"De un total de: {total_registrados}")
+        col2.metric("Time to First Purchase (días)", f"{average_time_to_first_purchase:,.2f}", 
+                    help="Promedio de la diferencia entre la fecha de registro y fecha de la primera compra")
         col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
                 help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
         col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
                 help="100 - Tasa de Retención.")
+    
+    # Histograma de tiempo hasta la priemra compra. 
+    # Filtrar valores válidos para TTFP
+    valid_time_to_first_purchase = df_complete['time_to_first_purchase'].dropna()
+
+    # Crear el DataFrame para Altair
+    ttfp_data = pd.DataFrame({'time_to_first_purchase': valid_time_to_first_purchase})
+
+    # Crear el histograma
+    histogram = (
+        alt.Chart(ttfp_data[ttfp_data["time_to_first_purchase"]>=0])
+        .mark_bar()
+        .encode(
+            x=alt.X('time_to_first_purchase:Q', bin=alt.Bin(maxbins=60), title='Tiempo hasta la primera compra (días)'),
+            y=alt.Y('count()', title='Cantidad de clientes'),
+            tooltip=['count()']
+        )
+        .properties(
+            width=600,
+            height=400,
+            title='Distribución del Tiempo Hasta la Primera Compra'
+        )
+    )
+
+    # Mostrar el gráfico en Streamlit
+    st.altair_chart(histogram, use_container_width=True)
     
     st.markdown("#### Ciclo de vida temprano")
     st.markdown("#### Madurez del cliente")
@@ -507,5 +575,6 @@ except URLError as e:
     # Agregar una opción en el drodown que sea All, LISTO
     # Cuáles SKUs tienen mayor tasa de cumplimiento que otros, LISTO 
     # Cantidad de SKUs pedidos en promedio
-    # Revisar por qu da mas del 100% la tasa de conversion, LISTO
-    # Frecuencia de compra, 
+    # Revisar por qu da mas del 100% la tasa de conversion, LISTO (me estab dando mayor al 100% porque habia clientes
+    # que no estaban registrados, porque capaz se registraron antes, pero que si hicieron una compra en ese periodo)
+    # Frecuencia de compra
