@@ -163,6 +163,58 @@ try:
         else:
             if "order_date_formatted" in filtered_data_orders.columns:
                 
+                def crear_grafico_metrica(data, columna_metrica, nombre_metrica, color_linea):
+                    """
+                    Función para crear un gráfico de línea para una métrica específica.
+                    
+                    Parameters:
+                    - data: dataframe con los datos.
+                    - columna_metrica: nombre de la columna de la métrica que quieres graficar.
+                    - nombre_metrica: nombre que se mostrará en el gráfico y la leyenda.
+                    - color_linea: color que se usará para la línea del gráfico.
+                    
+                    Returns:
+                    - Un gráfico de línea de Altair.
+                    """
+                    
+                    # Preparar los datos en formato largo para graficar
+                    agg_data_long = data.melt(id_vars=['order_date_formatted'], 
+                                            value_vars=[columna_metrica], 
+                                            var_name='Variable', 
+                                            value_name='Valor')
+                    
+                    selection = alt.selection_multi(fields=['Variable'], bind='legend')
+                    
+                    agg_data_long['Variable'] = agg_data_long['Variable'].replace({
+                        columna_metrica: nombre_metrica
+                    })
+                    
+                    chart = (
+                        alt.Chart(agg_data_long)
+                        .mark_line(color=color_linea)
+                        .encode(
+                            x=alt.X("order_date_formatted:T", title="Order date"),
+                            y=alt.Y("Valor:Q"),
+                            color=alt.Color('Variable:N', title='Variable', legend=alt.Legend(
+                                                                    orient='bottom',
+                                                                    title=None,
+                                                                    direction='horizontal',
+                                                                    legendX=0,
+                                                                    legendY=0
+                                                                )
+                                                            ),
+                            tooltip=[
+                                alt.Tooltip("order_date_formatted:T", title='Order date'),
+                                alt.Tooltip("Valor:Q", format=',.2f'),
+                                "Variable:N"
+                            ],
+                            opacity=alt.condition(selection, alt.value(1), alt.value(0)) 
+                        )
+                        .add_selection(selection)
+                    )
+                    
+                    return chart
+                
                 # Cálculos de métricas generales con los datos filtrados
                 ingresos_totales = filtered_data_orders['total_value'].sum()
                 ordenes_totales = filtered_data_orders['order_id'].nunique()
@@ -204,25 +256,25 @@ try:
                     col2.metric("Tasa de Cumplimiento por Item", f"{tasa_cumplimiento_item:.2f}%", 
                             help="(Items Entregados / Items Pedidos) * 100.")
 
-                # Contenedor: Métricas por cliente
-                with st.container():
-                    st.header("Performance a nivel cliente")
-                    col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
-                    col1.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%", 
-                                help="(Número de clientes únicos con ordenes / Número de registros únicos) * 100.")
-                    col2.metric("Lifetime Value Promedio", f"${ltv_por_cliente:,.2f}", 
-                                help="Promedio del valor total por cliente.")
-                    col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
-                            help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
-                    col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
-                            help="100 - Tasa de Retención.")
+                # Crear tabs para cada métrica
+                ingresos_totales, ordenes_totales, aov, tasa_sku, tasa_item = st.tabs([
+                    "Ingresos Totales", 
+                    "Órdenes Totales", 
+                    "AOV(Average Order Value)",
+                    "Tasa de Cuplimiento por SKU",
+                    "Tasa de Cumplimiento pot Item"
+                    ])
                     
                 # Grafico cada métrica a lo largo del tiempo
                 agg_data_metrics = (
                     filtered_data_orders.groupby("order_date_formatted", as_index=False)
                     .agg({
                         "total_value": "sum",  # Ingresos totales
-                        "order_id": "nunique"  # Órdenes totales
+                        "order_id": "nunique",  # Órdenes totales
+                        "skus_entregados": "sum",
+                        "skus_pedidos": "sum",
+                        "items_pedidos": "sum",
+                        "items_entregados": "sum"
                     })
                 )
 
@@ -235,46 +287,67 @@ try:
                 # Calcular AOV (Average Order Value) como ingresos totales / órdenes totales
                 agg_data_metrics["AOV"] = agg_data_metrics["ingresos_totales"] / agg_data_metrics["ordenes_totales"]
            
-                # Crear un dataframe largo para poder graficar las tres métricas
-                agg_data_long = agg_data_metrics.melt(id_vars=['order_date_formatted'], 
-                              value_vars=['ingresos_totales', 'ordenes_totales', 'AOV'], 
-                              var_name='Variable', 
-                              value_name='Valor')
+                # Calcular la tasa de cumplimiento por SKU 
+                agg_data_metrics["Tasa_sku"] = (agg_data_metrics['skus_entregados'] / agg_data_metrics['skus_pedidos']) * 100
+                
+                # Calcular la tasa de cumplimiento por Item 
+                agg_data_metrics["Tasa_item"] = (agg_data_metrics['items_entregados'] / agg_data_metrics['items_pedidos']) * 100
            
-                selection = alt.selection_multi(fields=['Variable'], bind='legend')
+                # Graficar en cada tab
+                with ingresos_totales:
+                    st.altair_chart(crear_grafico_metrica(
+                        agg_data_metrics, 
+                        "ingresos_totales", 
+                        "Ingresos Totales",
+                        "#60B7AC"
+                        ), use_container_width=True)
 
-                agg_data_long['Variable'] = agg_data_long['Variable'].replace({
-                    'ingresos_totales': 'Ingresos totales',  
-                    'ordenes_totales': 'Órdenes totales',
-                    'AOV': 'Average Order Value',
-                })
+                with ordenes_totales:
+                    st.altair_chart(crear_grafico_metrica(
+                        agg_data_metrics, 
+                        "ordenes_totales", 
+                        "Órdenes Totales",
+                        "pink"
+                        ), use_container_width=True)
 
-                chart_metrics = (
-                    alt.Chart(agg_data_long)
-                    .mark_line()
-                    .encode(
-                        x=alt.X("order_date_formatted:T", title="Order date"),
-                        y=alt.Y("Valor:Q"),
-                        color=alt.Color('Variable:N', title='Variable', legend=alt.Legend(
-                                                orient='bottom',
-                                                title=None,
-                                                direction='horizontal',
-                                                legendX=0,
-                                                legendY=0
-                                            )
-                                        ),
-                        tooltip=[
-                            alt.Tooltip("order_date_formatted:T", title='Order date'),
-                            alt.Tooltip("Valor:Q", format=',.2f'),
-                            "Variable:N"],
-                        opacity=alt.condition(selection, alt.value(1), alt.value(0)) 
-                    )
-                    .add_selection(selection)
-                )
+                with aov:
+                    st.altair_chart(crear_grafico_metrica(
+                        agg_data_metrics, 
+                        "AOV", 
+                        "Average Order Value",
+                        "#8A2BE2"
+                        ), use_container_width=True)
 
-                # Visualización del gráfico
-                st.altair_chart(chart_metrics, use_container_width=True)
-           
+                with tasa_sku:
+                    st.altair_chart(crear_grafico_metrica(
+                        agg_data_metrics, 
+                        "Tasa_sku", 
+                        "Tasa de Cumplimiento por SKU",
+                        "#8A2BE2"
+                        ), use_container_width=True)
+
+                with tasa_item:
+                    st.altair_chart(crear_grafico_metrica(
+                        agg_data_metrics, 
+                        "Tasa_item", 
+                        "Tasa de Cumplimiento por Item",
+                        "#8A2BE2"
+                        ), use_container_width=True)
+                       
+                # Contenedor: Métricas por cliente
+                with st.container():
+                    st.header("Performance a nivel cliente")
+                    col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
+                    col1.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%", 
+                                help="(Número de clientes únicos con ordenes / Número de registros únicos) * 100.")
+                    col2.metric("Lifetime Value Promedio", f"${ltv_por_cliente:,.2f}", 
+                                help="Promedio del valor total por cliente.")
+                    col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
+                            help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
+                    col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
+                            help="100 - Tasa de Retención.")
+                
+ 
                 # Hago a la agregación por valor para armar el gráfico
                 agg_data = (
                     filtered_data_orders.groupby("order_date_formatted", as_index=False)
