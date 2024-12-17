@@ -552,17 +552,14 @@ try:
         col2.markdown("Primeros 30-90 días desde la primera compra.")
         col2.metric("N° Clientes en ciclo temprano", f"{num_clientes_ciclo_temprano_dias}")
     
-    # Métricas de retención
-    clientes_retenidos = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
-    tasa_retencion = (clientes_retenidos / filtered_data_orders['customer_id'].nunique()) * 100
-    tasa_churn = 100 - tasa_retencion
+    
+    # Clientes maduros (más de 3 transacciones)
+    clientes_ciclo_maduro = filtered_data_orders_registered.groupby('customer_id').filter(lambda x: len(x) > 3)
+    num_clientes_ciclo_maduro = clientes_ciclo_maduro['customer_id'].nunique()
     
     st.markdown("#### Madurez del cliente")
-    
-        #     col3.metric("Tasa de Retención", f"{tasa_retencion:.2f}%", 
-        #         help="(Clientes que realizaron más de 1 orden / Total de clientes únicos) * 100.")
-        # col4.metric("Tasa de Churn", f"{tasa_churn:.2f}%", 
-        #         help="100 - Tasa de Retención.")
+    st.metric("Clientes maduros", f"{num_clientes_ciclo_maduro}",
+              help="Más de 3 transacciones")
 
 except URLError as e:
     st.error(
