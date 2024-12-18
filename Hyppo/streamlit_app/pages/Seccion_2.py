@@ -112,8 +112,8 @@ def load_data():
 try:
     df_BD_campaigns_Q3, df_bd_orders, df_BD_signups= load_data()
     
-    st.title("Visualización del dataframe")
-    st.dataframe(df_BD_campaigns_Q3)
+    # st.title("Visualización del dataframe")
+    # st.dataframe(df_BD_campaigns_Q3)
 
     first_year = df_bd_orders["order_date_formatted"].min()
     last_year = df_bd_orders["order_date_formatted"].max()
@@ -164,143 +164,193 @@ try:
             dependent_values=selected_campaign_name,
             dependent_column="campaign_name"
         )
-  
-    with col2: 
-           
-        start_date = pd.to_datetime(start_date)
-        end_date = pd.to_datetime(end_date)
-            
-        if start_date == first_year and end_date == last_year:
-            data = df_bd_orders # Mostrar todos los datos
-        else:
-            # Filtrar los datos por el rango de fechas seleccionado
-            data = df_bd_orders[(df_bd_orders["order_date_formatted"] >= start_date) & (df_bd_orders["order_date_formatted"] <= end_date)]
-            
-        filtered_data_orders = data[
-                (data["channel"].isin(selected_channel)) &
-                (data["categoria"].isin(selected_category)) &
-                (data["tipo_orden"].isin(selected_tipo_orden)) 
-            ]
-
-        if filtered_data_orders.empty:
-            st.warning("No data available for the selected date range. Showing all available data instead.")
-        else:
-            # Tasa de entrega de campañas a usuarios únicos
-            total_campaigns = df_BD_campaigns_Q3['campaign_id'].nunique()
-            delivered_campaigns = df_BD_campaigns_Q3[df_BD_campaigns_Q3['delivery_status'] == 'Delivered']['campaign_id'].nunique()
-            tasa_entrega_campaigns = (delivered_campaigns / total_campaigns) * 100
-
-            # Tasa de conversión de campañas
-            total_conversions = df_BD_campaigns_Q3['conversions'].sum()
-            tasa_conversion_campaigns = (total_conversions / total_campaigns) * 100
-
-            # Promedio de compras por usuario
-            avg_purchases_per_user = filtered_data_orders.groupby('customer_id')['order_id'].nunique().mean()
-
-            # Valor total de compras por campaña
-            df_campaigns_orders = pd.merge(filtered_data_orders, df_BD_campaigns_Q3, on='campaign_id')
-            total_value_by_campaign = df_campaigns_orders.groupby('campaign_id')['total_value'].sum()
-
-            # Segmentación de usuarios por tipo de campaña
-            user_campaign_segmentation = df_campaigns_orders.groupby('campaign_type')['customer_id'].nunique()
-
-            # Impacto de los descuentos
-            discounted_orders = filtered_data_orders[filtered_data_orders['discounted'] == True]
-            discount_impact = discounted_orders['total_value'].sum() / filtered_data_orders['total_value'].sum() * 100
-
-            # Tasa de recompra
-            repeat_customers = filtered_data_orders.groupby('customer_id')['order_id'].count().loc[lambda x: x > 1].count()
-            tasa_recompra = (repeat_customers / filtered_data_orders['customer_id'].nunique()) * 100
-
-            # Desempeño por tipo de usuario
-            performance_by_user_type = filtered_data_orders.groupby('user_type')['total_value'].sum()
-
-            # Tasa de activación
-            active_users = df_BD_signups[df_BD_signups['user_status'] == 'Active']
-            tasa_activacion = (active_users['customer_id'].nunique() / df_BD_signups['customer_id'].nunique()) * 100
-
-            # Mostrar KPIs
-            st.header("KPIs de Marketing")
-            col1, col2 = st.columns([1, 1])
-
-            with col1:
-                st.metric("Tasa de entrega de campañas", 
-                          f"{tasa_entrega_campaigns:.2f}%", 
-                          help="Porcentaje de campañas entregadas.")
-                st.metric("Tasa de conversión de campañas", 
-                          f"{tasa_conversion_campaigns:.2f}%", 
-                          help="Porcentaje de conversiones por campaña.")
-                st.metric("Promedio de compras por usuario", 
-                          f"{avg_purchases_per_user:.2f}", 
-                          help="Promedio de compras realizadas por usuario.")
-                st.metric("Valor total de compras por campaña", 
-                          f"${total_value_by_campaign.sum():,.2f}", 
-                          help="Valor total de compras agrupado por campaña.")
-                
-            with col2:
-                st.metric("Segmentación de usuarios por tipo de campaña", 
-                          f"{user_campaign_segmentation}", 
-                          help="Número de usuarios por tipo de campaña.")
-                st.metric("Impacto de los descuentos", 
-                          f"{discount_impact:.2f}%", 
-                          help="Porcentaje de ventas con descuento.")
-                st.metric("Tasa de recompra", 
-                          f"{tasa_recompra:.2f}%", 
-                          help="Porcentaje de clientes que han comprado más de una vez.")
-                st.metric("Desempeño por tipo de usuario", 
-                          f"{performance_by_user_type}", 
-                          help="Desempeño total de ventas por tipo de usuario.")
-                st.metric("Tasa de activación", 
-                          f"{tasa_activacion:.2f}%", 
-                          help="Porcentaje de usuarios activos.")
-
-                # Hago a la agregación por valor para armar el gráfico
-                agg_data = (
-                    filtered_data_orders.groupby("order_date_formatted", as_index=False)
-                    .agg({"skus_pedidos": "sum", "skus_entregados": "sum", "items_pedidos": "sum", "items_entregados": "sum"})
-                )
-            
-                melted_df = pd.melt(agg_data, id_vars=["order_date_formatted"], 
-                                value_vars=["skus_pedidos", "skus_entregados", "items_pedidos", "items_entregados"], 
-                                var_name="variable", value_name="value"
-                )
-                
-                selection = alt.selection_multi(fields=['variable'], bind='legend')
-
-                melted_df['variable'] = melted_df['variable'].replace({
-                    'skus_pedidos': 'SKUs Pedidos',  
-                    'skus_entregados': 'SKUs Entregados',
-                    'items_pedidos': 'Items Pedidos',
-                    'items_entregados': 'Items Entregados'
-                })
-
-                chart = (
-                    alt.Chart(melted_df)
-                    .mark_line()
-                    .encode(
-                        x=alt.X("order_date_formatted:T", title="Order date"),
-                        y=alt.Y("value:Q"),
-                        color=alt.Color('variable:N', title='Variable', legend=alt.Legend(
-                                                orient='bottom',
-                                                title=None,
-                                                direction='horizontal',
-                                                legendX=0,
-                                                legendY=0
-                                            )
-                                        ),
-                        tooltip=["order_date_formatted:T", "value:Q", "variable:N"],
-                        opacity=alt.condition(selection, alt.value(1), alt.value(0)) 
-                    )
-                    .add_selection(selection)
-                )
-
-                # Visualización del gráfico
-                st.altair_chart(chart, use_container_width=True)
     
-    st.header("Ciclo de Vida de los clientes")
-    st.markdown("#### Activación (antes de primera compra)")
-    st.markdown("#### Ciclo de vida temprano")
-    st.markdown("#### Madurez del cliente")
+    with col2: 
+    # Cuentas por campaña
+        st.header("Tasa de conversión de campañas y Tasa de clics (Clicks-Through Rate)")
+        # Filtrar las métricas necesarias
+        metrics_to_count = ['delivered', 'opened', 'clicked']
+
+        # Crear una tabla con las cantidades agrupadas
+        grouped_campaigns = df_BD_campaigns_Q3[df_BD_campaigns_Q3['metric'].isin(metrics_to_count)].groupby(
+            ['campaign_name', 'metric']
+        )['metric'].count().unstack(fill_value=0).reset_index()
+
+        # Asegurar que las columnas estén en el orden correcto
+        grouped_campaigns = grouped_campaigns.rename_axis(None, axis=1)
+        grouped_campaigns.columns.name = None
+
+        # Calcular métricas
+        grouped_campaigns['Conversion rate (%)'] = (grouped_campaigns['opened'] /(grouped_campaigns['opened'] + grouped_campaigns['delivered'])) * 100
+        grouped_campaigns['CTR (%)'] = (grouped_campaigns['clicked'] / (grouped_campaigns['clicked'] + grouped_campaigns['opened'] + grouped_campaigns['delivered'])) * 100
+
+        # Redondear métricas para mayor claridad
+        grouped_campaigns['Conversion rate (%)'] = grouped_campaigns['Conversion rate (%)'].round(2)
+        grouped_campaigns['CTR (%)'] = grouped_campaigns['CTR (%)'].round(2)
+
+        # Mostrar el DataFrame resultante en Streamlit
+        st.dataframe(grouped_campaigns)
+        
+    # Tasa de rebote
+        st.header("Tasa de rebote (Bounce Rate)")
+        # Normalizar las fechas
+        df_BD_campaigns_Q3['created_at'] = pd.to_datetime(df_BD_campaigns_Q3['created_at']).dt.date
+        df_BD_signups['fecha_registro_formatted'] = pd.to_datetime(df_BD_signups['fecha_registro_formatted']).dt.date
+
+        # Obtener los usuarios registrados y las campañas
+        df_signups = df_BD_signups[['customer_id', 'fecha_registro_formatted']].copy()
+        df_campaigns = df_BD_campaigns_Q3[['campaign_name', 'customer_id', 'created_at']].copy()
+
+        # Agrupar usuarios registrados por campaña
+        usuarios_registrados_por_campaña = df_campaigns.groupby('campaign_name')['customer_id'].unique().reset_index()
+        usuarios_registrados_por_campaña = usuarios_registrados_por_campaña.rename(columns={'customer_id': 'usuarios_enviados'})
+
+        # Unir campañas con usuarios registrados
+        usuarios_registrados_por_campaña['usuarios_registrados'] = usuarios_registrados_por_campaña['campaign_name'].apply(
+            lambda campaña: df_signups['customer_id'].unique()
+        )
+
+        # Calcular usuarios rebotados por campaña
+        usuarios_registrados_por_campaña['Usuarios Rebotados'] = usuarios_registrados_por_campaña.apply(
+            lambda row: len(set(row['usuarios_registrados']) - set(row['usuarios_enviados'])),
+            axis=1
+        )
+
+        # Calcular métricas por campaña
+        usuarios_registrados_por_campaña['Total Registrados'] = usuarios_registrados_por_campaña['usuarios_registrados'].apply(len)
+        usuarios_registrados_por_campaña['Bounce Rate'] = (
+            (usuarios_registrados_por_campaña['Usuarios Rebotados'] / usuarios_registrados_por_campaña['Total Registrados']) * 100
+        ).round(2)
+
+        # Seleccionar columnas relevantes para mostrar
+        resultados_bounce_rate = usuarios_registrados_por_campaña[['campaign_name', 'Total Registrados', 'Usuarios Rebotados', 'Bounce Rate']]
+
+        # Mostrar resultados en Streamlit
+        st.dataframe(resultados_bounce_rate)
+
+    # Proemdio de compras
+        st.header("Promedio de compras")
+
+        # Filtrar las campañas donde el metric es 'clicked'
+        df_campaigns_clicked = df_BD_campaigns_Q3[df_BD_campaigns_Q3['metric'] == 'clicked']
+
+        # Convertir las fechas a formato datetime para realizar comparaciones
+        df_campaigns_clicked['created_at'] = pd.to_datetime(df_campaigns_clicked['created_at'])
+        df_bd_orders['order_date_formatted'] = pd.to_datetime(df_bd_orders['order_date_formatted'])
+
+        # Hacer el join entre las campañas y las órdenes, considerando que el cliente hizo una compra después de hacer clic en la campaña
+        df_joined = pd.merge(df_campaigns_clicked, df_bd_orders, on='customer_id')
+
+        # Filtrar solo las compras que ocurrieron después de que el cliente clickeó la campaña
+        df_filtered = df_joined[df_joined['order_date_formatted'] > df_joined['created_at']]
+
+        # Contar cuántas compras realizó cada usuario por campaña
+        df_user_purchases = df_filtered.groupby(['campaign_name', 'customer_id']).size().reset_index(name='Promedio de Compras')
+
+        # Calcular el promedio de compras por usuario por campaña
+        df_average_purchases = df_user_purchases.groupby('campaign_name')['Promedio de Compras'].mean().reset_index()
+
+        # Mostrar el DataFrame resultante con el promedio de compras por campaña
+        st.dataframe(df_average_purchases)
+        
+    # Ganancia promedio
+        st.header("Valor promedio")
+
+        # Filtrar las campañas donde el metric es 'clicked'
+        df_campaigns_clicked = df_BD_campaigns_Q3[df_BD_campaigns_Q3['metric'] == 'clicked']
+
+        # Convertir las fechas a formato datetime para realizar comparaciones
+        df_campaigns_clicked['created_at'] = pd.to_datetime(df_campaigns_clicked['created_at'])
+        df_bd_orders['order_date_formatted'] = pd.to_datetime(df_bd_orders['order_date_formatted'])
+
+        # Hacer el join entre las campañas y las órdenes, considerando que el cliente hizo una compra después de hacer clic en la campaña
+        df_joined = pd.merge(df_campaigns_clicked, df_bd_orders, on='customer_id')
+
+        # Filtrar solo las compras que ocurrieron después de que el cliente clickeó la campaña
+        df_filtered = df_joined[df_joined['order_date_formatted'] > df_joined['created_at']]
+
+        # Sumar el total_value de cada compra por usuario y campaña
+        df_user_value = df_filtered.groupby(['campaign_name', 'customer_id'])['total_value'].sum().reset_index(name='Valor Promedio')
+
+        # Calcular el promedio de total_value por usuario por campaña
+        df_average_value = df_user_value.groupby('campaign_name')['Valor Promedio'].mean().reset_index()
+
+        # Mostrar el DataFrame resultante con el promedio de total_value por campaña
+        st.dataframe(df_average_value)
+    
+    # Desempeño por tipo de usuario
+        st.header("Desempeño por tipo de usuario (Tasas de Recompra y Activación por campaña)")
+
+        # Filtrar las campañas donde el metric es 'clicked'
+        df_campaigns_clicked = df_BD_campaigns_Q3[df_BD_campaigns_Q3['metric'] == 'clicked']
+
+        # Convertir las fechas a formato datetime para realizar comparaciones
+        df_campaigns_clicked['created_at'] = pd.to_datetime(df_campaigns_clicked['created_at'])
+        df_bd_orders['order_date_formatted'] = pd.to_datetime(df_bd_orders['order_date_formatted'])
+
+        # Hacer el join entre las campañas y las órdenes, considerando que el cliente hizo una compra después de hacer clic en la campaña
+        df_joined = pd.merge(df_campaigns_clicked, df_bd_orders, on='customer_id')
+
+        # Filtrar solo las compras que ocurrieron después de que el cliente clickeó la campaña
+        df_filtered = df_joined[df_joined['order_date_formatted'] > df_joined['created_at']]
+
+        # **Tasa de Recompra**:
+        # Agrupar por campaña y cliente, y contar las compras posteriores
+        df_recompra = df_filtered.groupby(['campaign_name', 'customer_id'])['order_date_formatted'].count().reset_index(name='compras_totales')
+
+        # Filtrar usuarios que hicieron más de una compra
+        df_recompra = df_recompra[df_recompra['compras_totales'] > 1]
+
+        # Calcular la tasa de recompra (usuarios que compraron más de una vez / usuarios totales)
+        df_recompra_rate = df_recompra.groupby('campaign_name')['compras_totales'].count().reset_index(name='usuarios_recompra')
+        df_total_users = df_filtered.groupby('campaign_name')['customer_id'].nunique().reset_index(name='usuarios_totales')
+
+        df_recompra_rate = pd.merge(df_recompra_rate, df_total_users, on='campaign_name')
+        df_recompra_rate['Tasa_Recompra'] = (df_recompra_rate['usuarios_recompra'] / df_recompra_rate['usuarios_totales']) * 100
+
+        # **Tasa de Activación**:
+        # Para calcular la tasa de activación, identificamos a los usuarios que compraron por primera vez debido a la campaña
+        df_first_purchase = df_filtered.groupby('customer_id')['order_date_formatted'].min().reset_index(name='first_purchase')
+        df_first_purchase = pd.merge(df_filtered, df_first_purchase, on='customer_id')
+
+        # Filtrar para los usuarios cuya primera compra fue después de la campaña (usuarios nuevos activados)
+        df_new_users = df_first_purchase[df_first_purchase['first_purchase'] == df_first_purchase['order_date_formatted']]
+
+        # Calcular la tasa de activación (usuarios nuevos que realizaron compras debido a la campaña)
+        df_activation_rate = df_new_users.groupby('campaign_name')['customer_id'].nunique().reset_index(name='usuarios_activados')
+        df_campaigns_count = df_campaigns_clicked.groupby('campaign_name')['customer_id'].nunique().reset_index(name='usuarios_totales_campaña')
+
+        df_activation_rate = pd.merge(df_activation_rate, df_campaigns_count, on='campaign_name')
+        df_activation_rate['Tasa_Activacion'] = (df_activation_rate['usuarios_activados'] / df_activation_rate['usuarios_totales_campaña']) * 100
+
+        # **Unir resultados en un solo DataFrame**:
+        df_result = pd.merge(df_recompra_rate[['campaign_name', 'Tasa_Recompra']], df_activation_rate[['campaign_name', 'Tasa_Activacion']], on='campaign_name', how='outer')
+
+        # Mostrar el DataFrame resultante
+        st.dataframe(df_result)
+
+    
+    # Cantidad por campaña y métrica
+        st.header("Agrupación por campaña y métrica")
+        grouped_data = df_BD_campaigns_Q3.groupby(['campaign_name', 'metric']).size().reset_index(name='count')
+        # Mostrar el resultado
+        st.dataframe(grouped_data)
+        
+        st.write("Visualización: Conteo por Campaign Name y Metric")
+        bar_chart = alt.Chart(grouped_data).mark_bar().encode(
+            x=alt.X('campaign_name:N', title='Campaign Name', sort='-y'),  # Campañas en el eje X
+            y=alt.Y('count:Q', title='Conteo'),  # Conteo en el eje Y
+            color='metric:N',  # Diferenciar por color las métricas
+            column='metric:N',  # Crear columnas separadas por métrica
+            tooltip=['campaign_name', 'metric', 'count']  # Información al pasar el mouse
+        ).properties(
+            width=200,  # Ancho de cada gráfico por métrica
+            height=400,  # Altura del gráfico
+            title='Conteo por Campaign Name y Metric'
+        )
+
+        # Mostrar el gráfico en Streamlit
+        st.altair_chart(bar_chart, use_container_width=True)
     
 
 except URLError as e:
