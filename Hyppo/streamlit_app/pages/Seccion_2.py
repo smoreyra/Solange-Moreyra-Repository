@@ -95,13 +95,19 @@ def load_data():
         # Cargar datasets desde archivos Excel
         # Campañas de envíos automatizados de comunicaciones que tuvo prendida 
         # el cliente durante Q3 2024 con un detalle de los envíos realizados
-        df_BD_campaigns_Q3 = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/bd_campaigns_q3.xlsx', engine='openpyxl')
+        df_BD_campaigns_Q3 = pd.read_csv('../bd_campaigns_q3 - bq-results-20241024-214424-1729806389970.csv')
 
         # Transacciones del período 2023 y 2024 hasta octubre
-        df_bd_orders = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/bd_orders.xlsx', engine='openpyxl')
-
+        df_bd_orders = pd.read_csv('../bd_orders - bq-results-20241024-134337-1729777484801.csv')
+        
+        # Convertir la columna de fechas a datetime
+        df_bd_orders['order_date_formatted'] = pd.to_datetime(df_bd_orders['order_date_formatted'], errors='coerce')
+        
         # Base de datos de descargas de la app desde Diciembre 2022 en adelante
-        df_BD_signups = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/BD_signups.xlsx', engine='openpyxl')
+        df_BD_signups = pd.read_csv('../BD_signups - results-20241024-105624.csv')
+        
+        # Convertir la columna de fechas a datetime
+        df_BD_signups['fecha_registro_formatted'] = pd.to_datetime(df_BD_signups['fecha_registro_formatted'], errors='coerce')
 
         return df_BD_campaigns_Q3, df_bd_orders, df_BD_signups
     
