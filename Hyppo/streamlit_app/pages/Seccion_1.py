@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 import numpy as np
 from urllib.error import URLError
+from pathlib import Path
 
 # Configuración de la página
 st.set_page_config(
@@ -92,12 +93,12 @@ st.write(
 @st.cache_data
 def load_data():
     try:
-        # Cargar datasets desde archivos Excel
+        # Cargar datasets desde archivos CSV
         # Transacciones del período 2023 y 2024 hasta octubre
-        df_bd_orders = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/bd_orders.xlsx', engine='openpyxl')
+        df_bd_orders = pd.read_csv('bd_orders.csv')
 
         # Base de datos de descargas de la app desde Diciembre 2022 en adelante
-        df_BD_signups = pd.read_excel('C:/Users/solange.moreyra/Desktop/Sol/Solange-Moreyra-Repository/hyppo/BD_signups.xlsx', engine='openpyxl')
+        df_BD_signups = pd.read_csv('BD_signups.csv')
 
         return df_bd_orders, df_BD_signups
     
